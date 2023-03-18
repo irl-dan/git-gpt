@@ -15,8 +15,6 @@ const UNIQUE_DELIMITER = "|||GPT4_DELIMITER|||";
 const octokit = new Octokit({ auth: process.env.GITHUB_ACCESS_TOKEN });
 
 async function main() {
-  console.log("Starting the main function");
-
   const directory = process.cwd();
 
   const context =
@@ -24,17 +22,12 @@ async function main() {
   const request =
     "Parameterize the request so that we can pass it in as an argument";
 
-  console.log("Getting the git status");
   const gitStatus = execSync("git status", { encoding: "utf-8" });
-  console.log(`Git status: ${gitStatus}`);
 
-  console.log("Getting the git tree");
   const gitTree = execSync("git ls-tree -r --name-only HEAD", {
     encoding: "utf-8",
   });
-  console.log(`Git tree: ${gitTree}`);
 
-  console.log("Getting the planning details");
   const planningDetails = await getPlanningDetails({
     context,
     gitStatus,
@@ -57,21 +50,17 @@ async function main() {
     console.log(`Processing file ${file}`);
 
     const filepath = path.join(directory, file);
-
-    console.log(`Reading file content from ${filepath}`);
     const fileContent = fs.readFileSync(filepath, "utf-8");
 
     const markdown = `### Context\n${context}\n\n### Planned Changes\n${plannedChanges}\n\n### Git Status\n${gitStatus}\n\n### Git Tree\n${gitTree}\n\n### File Content\n${fileContent}\n\n### Request\n${request}`;
 
-    console.log(`Sending the following markdown to OpenAI: ${markdown}`);
     const result = await changeSingleFile(markdown);
-
     if (result.choices && result.choices.length > 0) {
       const [newContent, summary] = result.choices[0].message.content
         .split(UNIQUE_DELIMITER)
         .map((s) => s.trim());
 
-      console.log(`Writing new content to ${filepath}`);
+      console.log(`Writing new content to ${filepath}...`);
       fs.writeFileSync(filepath, newContent, "utf-8");
 
       // Write the summary to the parallel directory
@@ -148,17 +137,32 @@ ${request}
 
 Analyze the codebase and provide a JSON object with the keys "branch_name", "planned_changes", "required_file_reads", and "required_file_writes", describing the specific improvements and modifications needed to optimize the code and fix potential issues. Make sure the recommendations are precise, relevant, and actionable. Use snake case to name the branch something concise and relevant, use 30-40 characters`;
 
+  const messages = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ];
+
+  const response = chat(messages);
+}
+
+async function chat(messages) {
+  console.log(
+    `=====================Local to GPT-4>>>>>>>>>>>>>>>>>>>>>\n\n${userPrompt}========================================================`
+  );
   const response = await openai.createChatCompletion({
     model: "gpt-4",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
+    messages,
     temperature: 1,
     n: 1,
   });
 
-  return response.choices[0].message.content;
+  const content = response.data.choices[0].message.content;
+
+  console.log(
+    `<<<<<<<<<<<<<<<<<<<<<<GPT-4 to Local:\n\n=====================${content}========================================================`
+  );
+
+  return content;
 }
 
 async function changeSingleFile(markdown) {
@@ -185,7 +189,7 @@ Then, provide a compact pseudocode interface summary of the new version of the f
     n: 1,
   });
 
-  return response;
+  return response.data;
 }
 
 async function createPullRequest(owner, repo, head, base, title, body) {
