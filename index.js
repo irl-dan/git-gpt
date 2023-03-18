@@ -3,18 +3,21 @@ const path = require("path");
 const { execSync } = require("child_process");
 const openai = require("openai");
 const dotenv = require("dotenv");
+const { Octokit } = require("@octokit/rest");
 
 dotenv.config();
 openai.apiKey = process.env.OPENAI_API_KEY;
 
 const UNIQUE_DELIMITER = "|||GPT4_DELIMITER|||";
+const octokit = new Octokit({ auth: process.env.GITHUB_ACCESS_TOKEN });
 
 async function main() {
   const directory = process.cwd();
 
   const context =
-    "You are working o a pull request for a project. You are midway through making changes according to the following Planned Changes. Included below is helpful context about the changes and the state of the code repositority.";
-  const request = "Your request goes here";
+    "You are working on a pull request for a project. You are midway through making changes according to the following Planned Changes. Included below is helpful context about the changes and the state of the code repositority.";
+  const request =
+    "Parameterize the request so that we can pass it in as an argument";
 
   const gitStatus = execSync("git status", { encoding: "utf-8" });
   const gitTree = execSync("git ls-tree -r --name-only HEAD", {
@@ -74,8 +77,13 @@ async function main() {
       `Successfully created a new branch '${branchName}' and pushed the changes.`
     );
 
-    // Add code to open a pull request using GitHub API or any library that supports it
-    // ...
+    const owner = "irl-dan";
+    const repo = "gpt-pr";
+    const baseBranch = "main";
+    const prTitle = `gpt-pr changes for ${branchName}`;
+    const prBody = plannedChanges;
+
+    createPullRequest(owner, repo, branchName, baseBranch, prTitle, prBody);
   } catch (error) {
     console.error(
       "Error while committing changes and creating a new branch:",
@@ -138,6 +146,32 @@ Then, provide a compact pseudocode interface summary of the new version of the f
   });
 
   return response;
+}
+
+async function createPullRequest(owner, repo, head, base, title, body) {
+  try {
+    const response = await octokit.rest.pulls.create({
+      owner,
+      repo,
+      head,
+      base,
+      title,
+      body,
+    });
+
+    if (response.status === 201) {
+      console.log(
+        `Pull request created successfully: ${response.data.html_url}`
+      );
+      return response.data.html_url;
+    } else {
+      console.error("Error creating pull request:", response);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error creating pull request:", error);
+    return null;
+  }
 }
 
 main()
