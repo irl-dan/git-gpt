@@ -128,9 +128,13 @@ function applyPatch(directory, branch, iteration, patch) {
   fs.ensureFileSync(patchPath);
   fs.writeFileSync(patchPath, patch, "utf-8");
 
-  execSync(`git apply --reject --whitespace=fix ${patchPath}`, {
-    encoding: "utf-8",
-  });
+  try {
+    execSync(`git apply --reject --whitespace=fix ${patchPath}`, {
+      encoding: "utf-8",
+    });
+  } catch (error) {
+    console.warn("Error while applying patch:", error);
+  }
 }
 
 function logIteration(directory, branch, iteration, response) {
@@ -337,7 +341,7 @@ async function getBranchName({ topLevelGoal }) {
   const userPrompt = `### Top Level Goal\n\n
     ${topLevelGoal}\n\n
 
-    We need a git branch name that reflects the above goal. Recommend a git branch name following the JSON template below:\n\n
+    We need a git branch name that reflects the above goal. Recommend a git branch name following the JSON template below. Respond only with the JSON and nothing else:\n\n
     {\n
         "branch": \${branchName}\n
     }\n
