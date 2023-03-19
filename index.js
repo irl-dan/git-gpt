@@ -462,7 +462,7 @@ async function chatMany(messages, model = "gpt-4") {
   );
   let response;
   // sleep for 5 seconds to avoid rate limiting
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  await new Promise((resolve) => setTimeout(resolve, 3000));
   try {
     response = await openai.createChatCompletion({
       model,
