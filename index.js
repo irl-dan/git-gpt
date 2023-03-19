@@ -296,7 +296,48 @@ async function iterate({ topLevelGoal, gameplan }) {
 
   const patchRequestContent = `
     As a helpful, accurate, knowledgable software engineer, you are now ready to make specific improvements and modifications according to the Top Level Goal, the Gameplan, and what you know about the repository. Make as many changes to as many files as you wish. Create new files, delete existing ones, or move files.\n\n
-    Specify the changes you want to make using a \`patch\` diff using the unified diff format (ie to be used by \`git apply <patch>\`). If no changes are needed, return an empty string. Respond only with contents of the patch, without any surrounding context, explanation, delimiters, or other information. Do not surround with code quote strings or with markdown.\n\n
+    Specify the changes you want to make using a \`patch\` diff using the unified diff format (ie to be used by \`git apply <patch>\`).\n\n
+
+    The patch file consists of several sections called 'hunks', each representing a set of changes made to a specific part of the file. The format and structure of a patch file is as follows:
+
+    ================== Begin Patch Format Documentation ==================\n\n
+    ### Header\n\n
+    The header contains two lines, each starting with either "---" or "+++". The "---" line refers to the original file, and the "+++" line refers to the modified file. The file paths or names are provided after the "---" and "+++" symbols.\n
+    Example:\n
+    \`\`\`\n
+    --- app_original.py\n
+    +++ app_modified.py\n
+    \`\`\`\n\n
+    ### Hunk\n\n
+    A hunk represents a set of changes made to a specific part of the file, containing both context lines and the actual changes. A hunk starts with a line that begins with "@@" and has the format:\n
+    \`\`\`\n
+    @@ -start1,count1 +start2,count2 @@
+    \`\`\`\n
+    The start1 and count1 refer to the line number and the number of lines in the original file, while start2 and count2 refer to the line number and the number of lines in the modified file. This line is followed by the actual changes and context lines.\n\n
+
+    ### Changes\n\n
+    Each line within a hunk starts with one of the following symbols, indicating its purpose:\n
+    ' ': A space character indicates a context line, meaning the line is unchanged and provides context for the surrounding changes.\n
+    '-': A minus symbol indicates a line that has been removed from the original file.\n
+    '+': A plus symbol indicates a line that has been added to the modified file.\n
+    Example:\n
+    \`\`\`\n
+    @@ -5,6 +5,10 @@\n
+    def home():\n
+        return render_template('index.html')\n\n
+
+    +@app.route('/about')\n
+    +def about():\n
+    +    return render_template('about.html')\n
+    +\n
+    if __name__ == '__main__':\n
+        app.run(debug=True)\n
+    \`\`\`\n\n
+    In this example, the hunk starts at line 5 in both the original and modified files. The original file has 6 lines in this section, while the modified file has 10 lines. The actual changes are the addition of the lines marked with '+'.
+    
+    ================== End Patch Format Documentation ==================\n\n
+
+    If no changes are needed, return an empty string. Respond only with contents of the patch, without any surrounding context, explanation, delimiters, or other information. Do not surround with code quote strings or with markdown. Avoid any patches that would return "corrupt patch at line N".
     `;
 
   const commandOutputsMessage = {
@@ -462,7 +503,7 @@ async function chatMany(messages, model = "gpt-4") {
   );
   let response;
   // sleep for 5 seconds to avoid rate limiting
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await new Promise((resolve) => setTimeout(resolve, 4000));
   try {
     response = await openai.createChatCompletion({
       model,
