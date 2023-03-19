@@ -175,7 +175,7 @@ function logIteration(
       "out.log"
     );
     fs.ensureFileSync(completePath);
-    fs.writeFileSync(completePath, complete, "utf-8");
+    fs.writeFileSync(completePath, `${complete}`, "utf-8");
   }
 }
 
