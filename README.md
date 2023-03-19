@@ -1,1 +1,1 @@
-# gpt-pr
+# git-gpt
