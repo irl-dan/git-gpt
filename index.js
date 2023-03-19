@@ -105,6 +105,11 @@ function executeCommands(commands) {
       console.warn(`Attempt to execute command ${command} was blocked`);
       continue;
     }
+
+    console.log(`!!!!!!!!!!!! Executing command !!!!!!!!!!!!`);
+    console.log(command);
+    console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
+
     const output = execSync(command, { encoding: "utf-8" });
     commandOutputs[command] = output;
   }
@@ -116,7 +121,7 @@ function applyPatch(directory, branch, iteration, patch) {
     directory,
     ".gpt-git",
     branch,
-    iteration,
+    `${iteration}`,
     "patch"
   );
   fs.ensureFileSync(patchPath);
@@ -132,7 +137,7 @@ function logIteration(directory, branch, iteration) {
     directory,
     ".gpt-git",
     branch,
-    iteration,
+    `${iteration}`,
     "response.json"
   );
   fs.ensureFileSync(iterationLogPath);
