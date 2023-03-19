@@ -17,7 +17,7 @@ async function main() {
   const topLevelGoal =
     "Parameterize the `topLevelGoal` so that we can pass it in as a node js argument";
 
-  const branch = await getBranchName({ topLevelGoal });
+  const { branch } = await getBranchName({ topLevelGoal });
 
   let gameplan = "Inspect index.js and figure out where to go from there.";
   let workingFile = "";
@@ -332,12 +332,15 @@ async function getChangeLog({ topLevelGoal }) {
 }
 
 async function getBranchName({ topLevelGoal }) {
-  const systemPrompt = `You are a helpful, accurate, knowledgable software engineer.`;
+  const systemPrompt = `You are a helpful, accurate, knowledgable software engineer. You respond only with a valid JSON Object. Escape any characters that need to be escaped.`;
 
   const userPrompt = `### Top Level Goal\n\n
     ${topLevelGoal}\n\n
 
-    We need a git branch name that reflects the above goal. Recommend a git branch name using kebab-case, keep it longer than 20 characters. Respond only with the text of the branch name with no description or other delimiters.
+    We need a git branch name that reflects the above goal. Recommend a git branch name following the JSON template below:\n\n
+    {\n
+        "branch": \${branchName}\n
+    }\n
   `;
 
   const messages = [
@@ -346,12 +349,14 @@ async function getBranchName({ topLevelGoal }) {
   ];
 
   const response = await chat(messages, "gpt-3.5-turbo");
-  return `${response}-${Math.floor(Math.random() * 100000)}`;
+
+  const { branch } = JSON.parse(response);
+  return { branch };
 }
 
 async function chat(messages, model = "gpt-4") {
   console.log(
-    `=====================local to ${model}>>>>>>>>>>>>>>>>>>>>>\n${JSON.stringify(
+    `=====================Local to GPT-4>>>>>>>>>>>>>>>>>>>>>\n${JSON.stringify(
       messages,
       null,
       2
@@ -367,7 +372,7 @@ async function chat(messages, model = "gpt-4") {
   const content = response.data.choices[0].message.content;
 
   console.log(
-    `<<<<<<<<<<<<<<<<<<<<<<${model} to local:=====================\n${content}\n========================================================`
+    `<<<<<<<<<<<<<<<<<<<<<<GPT-4 to Local:=====================\n${content}\n========================================================`
   );
 
   return content;
