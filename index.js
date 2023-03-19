@@ -354,7 +354,10 @@ async function getBranchName({ topLevelGoal }) {
 
   const response = await chat(messages, "gpt-3.5-turbo");
 
-  const { branch } = JSON.parse(response);
+  // random branch name
+  const branch = `branch-${Math.random().toString(36).substr(2, 9)}`;
+
+  // const { branch } = JSON.parse(response);
   return { branch };
 }
 
