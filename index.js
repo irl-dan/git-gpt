@@ -14,14 +14,14 @@ const MAX_ITERATIONS = 20;
 
 async function main() {
   const directory = process.cwd();
-  const topLevelGoal =
-    "Parameterize the `topLevelGoal` so that we can pass it in as a node js argument";
+  const topLevelGoal = process.argv[2];
 
   const { branch } = await getBranchName({ topLevelGoal });
 
   let gameplan = "Inspect index.js and figure out where to go from there.";
   let workingFile = "";
 
+  console.log(`Top Level Goal: ${topLevelGoal}`);
   // git checkout branch
   console.log(`Checking out a new branch ${branch}`);
   execSync(`git checkout -b ${branch}`, { encoding: "utf-8" });
@@ -57,7 +57,7 @@ async function main() {
     iteration++;
   }
 
-  const { commitMessage } = await getCommitMessage();
+  const { commitMessage } = await getCommitMessage({ topLevelGoal });
   const { changeLog } = await getChangeLog();
 
   logCommit(directory, branch, changeLog);
