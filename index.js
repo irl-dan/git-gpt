@@ -296,7 +296,7 @@ async function iterate({ topLevelGoal, gameplan }) {
 
   const patchRequestContent = `
     As a helpful, accurate, knowledgable software engineer, you are now ready to make specific improvements and modifications according to the Top Level Goal, the Gameplan, and what you know about the repository. Make as many changes to as many files as you wish. Create new files, delete existing ones, or move files.\n\n
-    Specify the changes you want to make using a \`patch\` diff using the unified diff format (ie what is generated using \`git diff\` or \`diff -u\`). If no changes are needed, return an empty string. Respond only with contents of the patch, without any surrounding context, explanation, delimiters, or other information.\n\n
+    Specify the changes you want to make using a \`patch\` diff using the unified diff format (ie to be used by \`git apply <patch>\`). If no changes are needed, return an empty string. Respond only with contents of the patch, without any surrounding context, explanation, delimiters, or other information. Do not surround with code quote strings or with markdown.\n\n
     `;
 
   const commandOutputsMessage = {
@@ -461,6 +461,8 @@ async function chatMany(messages, model = "gpt-4") {
     )}\n========================================================`
   );
   let response;
+  // sleep for 5 seconds to avoid rate limiting
+  await new Promise((resolve) => setTimeout(resolve, 5000));
   try {
     response = await openai.createChatCompletion({
       model,
