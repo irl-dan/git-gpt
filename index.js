@@ -130,15 +130,17 @@ function logIteration(
   iteration,
   { patch, nextGameplan, commandOutputs, complete }
 ) {
-  const patchFilePath = path.join(
-    directory,
-    ".gpt-git",
-    branch,
-    `${iteration}`,
-    "patch"
-  );
-  fs.ensureFileSync(patchFilePath);
-  fs.writeFileSync(patchFilePath, patch, "utf-8");
+  if (patch) {
+    const patchFilePath = path.join(
+      directory,
+      ".gpt-git",
+      branch,
+      `${iteration}`,
+      "patch"
+    );
+    fs.ensureFileSync(patchFilePath);
+    fs.writeFileSync(patchFilePath, patch, "utf-8");
+  }
 
   if (nextGameplan) {
     const nextGameplanPath = path.join(
@@ -152,15 +154,17 @@ function logIteration(
     fs.writeFileSync(nextGameplanPath, nextGameplan, "utf-8");
   }
 
-  const commandOutputsPath = path.join(
-    directory,
-    ".gpt-git",
-    branch,
-    `${iteration}`,
-    "out.log"
-  );
-  fs.ensureFileSync(commandOutputsPath);
-  fs.writeFileSync(commandOutputsPath, commandOutputs, "utf-8");
+  if (commandOutputs) {
+    const commandOutputsPath = path.join(
+      directory,
+      ".gpt-git",
+      branch,
+      `${iteration}`,
+      "out.log"
+    );
+    fs.ensureFileSync(commandOutputsPath);
+    fs.writeFileSync(commandOutputsPath, commandOutputs, "utf-8");
+  }
 
   if (complete) {
     const completePath = path.join(
