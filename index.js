@@ -469,7 +469,9 @@ async function chatMany(messages, model = "gpt-4") {
       n: 1,
     });
   } catch (e) {
-    console.error(e.response.data);
+    if (e.response) {
+      console.error(e.response.data);
+    }
     throw e;
   }
 
@@ -486,4 +488,7 @@ async function chatMany(messages, model = "gpt-4") {
 
 main()
   .then(() => console.log("Success!"))
-  .catch((error) => console.error("Error:", error));
+  .catch((error) => console.error("Error:", error))
+  .finally(() => {
+    execSync("git checkout main", { encoding: "utf-8" });
+  });
