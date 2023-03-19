@@ -256,19 +256,10 @@ async function iterate({ topLevelGoal, gameplan }) {
 
     Specify one or more commands to run, like \`ls\` \`grep\`, \`cat\`, \`git\`, \`tail\`, \`head\`, \`find\`, \`npm run test\`, \`npm run lint\` in service of learning about the repository in order to best apply a patch.
 
-    {\n
-        "patch": \${a series of code changes in the form of a \`patch\` diff using the unified diff format (generated using git diff or diff -u). If no changes are needed, return an empty string. Though typically the patch is applied to the Working File, the patch may contain changes to more than one file or even create new files or delete existing files. Be sure to escape characters appropriately since this is embedded in JSON},\n
-        "patchDescription": \${a concise, accurate description of the changes in the patch. This is a human readable description of the changes.},\n
-        "nextIteration": {\n
-          "commands": [\${one or more commands we should run after applying the above patch in service of learning about how to best apply the next Gameplan.}],\n
-          "workingFile": \${the path of the next Working File we should open after applying the above patch in order to achieve the Top Level Goal.},\n
-        },\n
-        "gameplan": \${the above given Gameplan, modified to reflect only the remaining steps required to achieve the Top Level Goal after applying the above patch.},\n
-        "complete": \${\`true\` if you are confident that you have completed the Top Level Goal. \`false\` if you are not confident that you have completed the Top Level Goal. This is exlusive with the \`nextIteration\` field.}\n
-    }\n
+    Respond with a JSON string array of commands to run, like: ["grep -Hn <search> *", "cat index.js"].\n\n
 `;
 
-  const messages = [
+  let messages = [
     { role: "system", content: systemPrompt },
     { role: "user", content: contextMessage, name: "context-provider" },
   ];
@@ -312,7 +303,7 @@ async function iterate({ topLevelGoal, gameplan }) {
   const patchRequestMessage = {
     role: "user",
     content: patchRequestContent,
-    name: "project manager",
+    name: "project-manager",
   };
   messages = [
     ...messages,
@@ -340,7 +331,7 @@ async function iterate({ topLevelGoal, gameplan }) {
   const nextGameplanMessage = {
     role: "user",
     content: nextGameplanContent,
-    name: "project manager",
+    name: "project-manager",
   };
   messages = [...messages, patchResponse, nextGameplanMessage];
 
@@ -452,27 +443,9 @@ async function getBranchName({ topLevelGoal }) {
 }
 
 async function chatOne(messages, model = "gpt-4") {
-  console.log(
-    `=====================Local to GPT-4>>>>>>>>>>>>>>>>>>>>>\n${JSON.stringify(
-      messages,
-      null,
-      2
-    )}\n========================================================`
-  );
-  const response = await openai.createChatCompletion({
-    model,
-    messages,
-    temperature: 1,
-    n: 1,
-  });
+  const message = await chatMany(messages, model);
 
-  const content = response.data.choices[0].message.content;
-
-  console.log(
-    `<<<<<<<<<<<<<<<<<<<<<<GPT-4 to Local:=====================\n${content}\n========================================================`
-  );
-
-  return content;
+  return message?.content;
 }
 
 async function chatMany(messages, model = "gpt-4") {
@@ -483,17 +456,25 @@ async function chatMany(messages, model = "gpt-4") {
       2
     )}\n========================================================`
   );
-  const response = await openai.createChatCompletion({
-    model,
-    messages,
-    temperature: 1,
-    n: 1,
-  });
+  let response;
+  try {
+    response = await openai.createChatCompletion({
+      model,
+      messages,
+      temperature: 1,
+      n: 1,
+    });
+  } catch (e) {
+    console.error(e.response.data);
+    throw e;
+  }
 
   const message = response.data.choices[0].message;
 
   console.log(
-    `<<<<<<<<<<<<<<<<<<<<<<GPT-4 to Local:=====================\n${content}\n========================================================`
+    `<<<<<<<<<<<<<<<<<<<<<<GPT-4 to Local:=====================\n${JSON.stringify(
+      message
+    )}\n========================================================`
   );
 
   return message;
