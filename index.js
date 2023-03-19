@@ -21,7 +21,6 @@ async function main() {
 
   let gameplan = "Inspect index.js and figure out where to go from there.";
   let workingFile = "";
-  let commandOutputs = executeCommands(["ls", "cat index.js"]);
 
   // git checkout branch
   console.log(`Checking out a new branch ${branch}`);
@@ -30,18 +29,15 @@ async function main() {
   const iteration = 0;
   while (iteration < MAX_ITERATIONS) {
     console.log(`Starting iteration ${iteration}`);
-    let { patch, patchDescription, nextIteration, complete } = await iterate({
+    let { patch, nextGameplan, commandOutputs, complete } = await iterate({
       topLevelGoal,
       gameplan,
-      commandOutputs,
-      workingFile,
     });
 
-    // log response to patch file
     logIteration(directory, branch, iteration, {
       patch,
-      patchDescription,
-      nextIteration,
+      nextGameplan,
+      commandOutputs,
       complete,
     });
 
@@ -54,17 +50,8 @@ async function main() {
       break;
     }
 
-    if (nextIteration?.commands) {
-      commandOutputs = executeCommands(commands);
-    }
-
-    if (nextIteration?.workingFile) {
-      const workingFilePath = path.join(directory, workingFile);
-      workingFile = fs.readFileSync(workingFilePath, "utf-8");
-    }
-
-    if (nextIteration?.gameplan) {
-      gameplan = nextIteration.gameplan;
+    if (nextGameplan) {
+      gameplan = nextGameplan;
     }
 
     iteration++;
@@ -103,7 +90,7 @@ function executeCommands(commands) {
       !command.startsWith("npm run lint") &&
       !command.startsWith("git")
     ) {
-      console.warn(`Attempt to execute command ${command} was blocked`);
+      console.warn(`Attempt to execute command \`${command}\` was blocked`);
       continue;
     }
 
@@ -137,20 +124,55 @@ function applyPatch(directory, branch, iteration, patch) {
   }
 }
 
-function logIteration(directory, branch, iteration, response) {
-  const iterationLogPath = path.join(
+function logIteration(
+  directory,
+  branch,
+  iteration,
+  { patch, nextGameplan, commandOutputs, complete }
+) {
+  const patchFilePath = path.join(
     directory,
     ".gpt-git",
     branch,
     `${iteration}`,
-    "response.json"
+    "patch"
   );
-  fs.ensureFileSync(iterationLogPath);
-  fs.writeFileSync(
-    iterationLogPath,
-    JSON.stringify(response, null, 2),
-    "utf-8"
+  fs.ensureFileSync(patchFilePath);
+  fs.writeFileSync(patchFilePath, patch, "utf-8");
+
+  if (nextGameplan) {
+    const nextGameplanPath = path.join(
+      directory,
+      ".gpt-git",
+      branch,
+      `${iteration}`,
+      "nextGameplan.md"
+    );
+    fs.ensureFileSync(nextGameplanPath);
+    fs.writeFileSync(nextGameplanPath, nextGameplan, "utf-8");
+  }
+
+  const commandOutputsPath = path.join(
+    directory,
+    ".gpt-git",
+    branch,
+    `${iteration}`,
+    "out.log"
   );
+  fs.ensureFileSync(commandOutputsPath);
+  fs.writeFileSync(commandOutputsPath, commandOutputs, "utf-8");
+
+  if (complete) {
+    const completePath = path.join(
+      directory,
+      ".gpt-git",
+      branch,
+      `${iteration}`,
+      "out.log"
+    );
+    fs.ensureFileSync(completePath);
+    fs.writeFileSync(completePath, complete, "utf-8");
+  }
 }
 
 function logCommit(directory, branch, changeLog) {
@@ -164,15 +186,37 @@ function logCommit(directory, branch, changeLog) {
   fs.writeFileSync(changeLogPath, changeLog, "utf-8");
 }
 
-async function iterate({
-  topLevelGoal,
-  gameplan,
-  commandOutputs,
-  workingFile,
-}) {
-  let workingFileContent = workingFile
-    ? fs.readFileSync(workingFile, "utf-8")
-    : "<no working file selected>";
+// todo:
+
+// break `iterate` into a chat series:
+
+// 1. "here is the context"
+// 2. run any commands you wish, you will be constrained by stdout size, so be targeted
+// 3. decide on patch
+// 4. decide on immediate next gameplan
+
+async function iterate({ topLevelGoal, gameplan }) {
+  const systemPrompt = `As GPT-4, you are an expert in software architecture, development, and analysis.\n
+    You are presented with a Top Level Goal, and you have access to a git repository, which you are permitted to modify through \`patch\` commands. You aim to change the state of the repository to advance the Top Level Goal.\n
+    You do nothing beyond recommending patches to the git repository that advance the Top Level Goal, while keeping the repository secure, compliant, safe, robust, modular, and easy-to-read.\n
+    You often recommend patches that are not immediately obvious to the human developer, but you are able to see the big picture and make the right decisions.\n
+    You recommend patches that are not only correct, but also the most efficient, the most secure, the most compliant, the most robust, the most modular, and the most easy-to-read.\n\n
+    
+    To aid you in advancing the Top Level Goal, you're presented with an immediate Gameplan which you will act on and later modify. (Top Level Goal:Strategy::Gamplan:Tactics)\n\n
+    
+    You are given plenty of Relevant Context about the Repository including:\n
+    * Repository README: a description of the repository which should give context about technologies, patterns, uses, and test commands\n
+    * a Git Status: the current working tree status,\n
+    * a Git Tree: the current git tree which shows all working files\n
+
+    Whenever you are asked to run a command, you will be constrained by stdout/stderr size, so be targeted. Optimize toward making the best patch decision, but use no more stdout/stderr than you require so avoid verbose output formats, and run only commands that are immediately useful.\n\n
+    You may use any one of the the following commands, but you are limited to running only the following commands. You may not run a command that modifies any state of the repository: \`ls\` \`grep\`, \`cat\`, \`git\`, \`tail\`, \`head\`, \`find\`, \`npm run test\`, \`npm run lint\`.\n\n
+    
+    When asked to recommend a series of changes, use write a valid \`patch\` diff using the unified diff format (ie what is generated using git diff or diff -u).
+    It is okay if your patch may not perfectly advance the Gameplan or reach the Top Level Goal, as you will have a future opportunity to iterate on it again in the future. But it should aim to make as much progress as possible.\n\n
+
+    When asked to modify the gameplan for the future iteration, you are sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that have been accomplished, add commands for testing the patch, and add new items to the gameplan that are now possible.\n\n
+  `;
 
   const gitStatusCommand = "git status --short";
   const gitStatus = execSync(gitStatusCommand, { encoding: "utf-8" });
@@ -182,32 +226,7 @@ async function iterate({
 
   const readme = fs.readFileSync("README.md", "utf-8");
 
-  const formattedCommandOutputs = Object.entries(commandOutputs).reduce(
-    (acc, [command, output]) => {
-      return `${acc}\n\n>>>>>>>>>> ${command}\n\`\`\`\n${output}\n\`\`\`\n`;
-    },
-    ""
-  );
-
-  const systemPrompt = `As GPT-4, you are an expert in software architecture, development, and analysis.\n
-    You are presented with a Top Level Goal for which we need to make changes to the repository.\n\n
-    You're given an immediate Gameplan which you will act on and later modify.\n\n
-    You're given the opportunity to iterate on the changes, so you may be presented with a repository that is already mid-change with a partially-executed Gameplan.\n\n
-    
-    You are given plenty of Relevant Context about the Repository including:\n
-    * Repository README: a description of the repository which should give context about technologies, patterns, uses, and test commands\n
-    * a Git Status: the current working tree status,\n
-    * a Git Tree: the current git tree which shows all working files\n
-    * Command Stdout/StdErr: commands paired with their StdOut/StdErr\n
-
-    You are given the following Working File Context:\n
-    * Working File: the full contents of the working file\n
-    * Working File Context: peaks into summaries of files related to the working file\n\n
-    
-    You recommend a series of changes as a \`patch\`. Respond only with a valid JSON Object. Escape any characters that need to be escaped.
-`;
-
-  const userPrompt = `### Top Level Goal\n\n
+  const contextMessage = `### Top Level Goal\n\n
     ${topLevelGoal}
 
     ### Gameplan\n
@@ -231,42 +250,113 @@ async function iterate({
     \`\`\`\n
     ${gitTree}\n
     \`\`\`\n
-
-    ### Command Stdout/StdErr\n
-    ${formattedCommandOutputs}\n\n
-
-    ### Working File\n
-    ${workingFileContent}\n\n
     ================== End Relevant Context ==================\n\n
 
     It is now your job to make specific improvements and modifications according to the initial request. Consider the changes you are sure you want to make given what you know about the repository.\n\n
+
+    Specify one or more commands to run, like \`ls\` \`grep\`, \`cat\`, \`git\`, \`tail\`, \`head\`, \`find\`, \`npm run test\`, \`npm run lint\` in service of learning about the repository in order to best apply a patch.
 
     {\n
         "patch": \${a series of code changes in the form of a \`patch\` diff using the unified diff format (generated using git diff or diff -u). If no changes are needed, return an empty string. Though typically the patch is applied to the Working File, the patch may contain changes to more than one file or even create new files or delete existing files. Be sure to escape characters appropriately since this is embedded in JSON},\n
         "patchDescription": \${a concise, accurate description of the changes in the patch. This is a human readable description of the changes.},\n
         "nextIteration": {\n
-            "gameplan": \${the above given Gameplan, modified to reflect only the remaining steps required to achieve the Top Level Goal after applying the above patch.},\n
-            "commands": [\${one or more commands we should run after applying the above patch in service of learning about how to best apply the next Gameplan. Use commands like \`ls\` \`grep\`, \`cat\`, \`npm run test\`, \`npm run lint\`, and \`git\` to inspect the current state of the repository, search for terms, read files and directories, and run tests to see if the codebase is consistent. Be mindful of output format, run only commands that are immediately useful, keep them targetted. Configure commands to return only the necessary information to conserve space.}],\n
-            "workingFile": \${the path of the next Working File we should open after applying the above patch in order to achieve the Top Level Goal.},\n
+          "commands": [\${one or more commands we should run after applying the above patch in service of learning about how to best apply the next Gameplan.}],\n
+          "workingFile": \${the path of the next Working File we should open after applying the above patch in order to achieve the Top Level Goal.},\n
         },\n
+        "gameplan": \${the above given Gameplan, modified to reflect only the remaining steps required to achieve the Top Level Goal after applying the above patch.},\n
         "complete": \${\`true\` if you are confident that you have completed the Top Level Goal. \`false\` if you are not confident that you have completed the Top Level Goal. This is exlusive with the \`nextIteration\` field.}\n
     }\n
 `;
 
   const messages = [
     { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
+    { role: "user", content: contextMessage, name: "context-provider" },
   ];
 
-  const response = await chat(messages);
+  const commandsResponse = await chatMany(messages);
 
-  const { patch, patchDescription, nextIteration, complete } =
-    JSON.parse(response);
+  let commands;
+  try {
+    commands = JSON.parse(commandsResponse?.content);
+  } catch (e) {
+    console.warn(`Failed to parse commands: ${commandsResponse?.content}`);
+    throw e; // TODO: we can suppress this later and prompt to reformat
+  }
+
+  if (commands) {
+    commandOutputs = executeCommands(commands);
+  }
+
+  let commandOutputsContent;
+  if (!commandOutputs) {
+    commandOutputsContent = "<no commands were run>";
+  } else {
+    commandOutputsContent = Object.entries(commandOutputs).reduce(
+      (acc, [command, output]) => {
+        return `${acc}\n\n>>>>>>> shell >>>>>>>>\n$ ${command}\n${output}\n<<<<<<< shell <<<<<<<`;
+      },
+      ""
+    );
+  }
+
+  const patchRequestContent = `
+    As a helpful, accurate, knowledgable software engineer, you are now ready to make specific improvements and modifications according to the Top Level Goal, the Gameplan, and what you know about the repository. Make as many changes to as many files as you wish. Create new files, delete existing ones, or move files.\n\n
+    Specify the changes you want to make using a \`patch\` diff using the unified diff format (ie what is generated using \`git diff\` or \`diff -u\`). If no changes are needed, return an empty string. Respond only with contents of the patch, without any surrounding context, explanation, delimiters, or other information.\n\n
+    `;
+
+  const commandOutputsMessage = {
+    role: "user",
+    content: commandOutputsContent,
+    name: "console",
+  };
+  const patchRequestMessage = {
+    role: "user",
+    content: patchRequestContent,
+    name: "project manager",
+  };
+  messages = [
+    ...messages,
+    // commandsResponse,
+    commandOutputsMessage,
+    patchRequestMessage,
+  ];
+
+  const patchResponse = await chatMany(messages);
+  const patch = patchResponse?.content;
+
+  const nextGameplanContent = `
+    Consider the above patch and make updates to the Gameplan for future iterations. Be sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that are no longer required given the patch, add commands for testing the patch, and add new items to the gameplan that are now possible. A good gameplan is typically outlined in bullet format.\n\n
+    If the Top Level Goal has been achieved or is close enough to being achieved that no further steps are necessary, return the precise valid JSON Object: \`{ "topLevelComplete": true }\`, with no words, explanation, or padding accompanying it.\n\n
+
+    ### Top Level Goal:\n
+    ${topLevelGoal}\n\n
+    
+    ### Current Gameplan:\n
+    ${gameplan}\n\n
+
+    ### New Gameplan:
+    `;
+
+  const nextGameplanMessage = {
+    role: "user",
+    content: nextGameplanContent,
+    name: "project manager",
+  };
+  messages = [...messages, patchResponse, nextGameplanMessage];
+
+  const nextGameplanResponse = await chatMany(messages);
+  const nextGameplan = nextGameplanResponse?.content;
+
+  let complete = false;
+  try {
+    const { topLevelComplete } = JSON.parse(nextGameplan.trim());
+    complete = topLevelComplete;
+  } catch (e) {}
 
   return {
     patch,
-    patchDescription,
-    nextIteration,
+    commandOuputs: commandOutputsContent,
+    nextGameplan,
     complete,
   };
 }
@@ -297,7 +387,7 @@ async function getCommitMessage({ topLevelGoal }) {
     { role: "user", content: userPrompt },
   ];
 
-  const response = await chat(messages, "gpt-3.5-turbo");
+  const response = await chatOne(messages, "gpt-3.5-turbo");
 
   const { commitMessage } = JSON.parse(response);
   return { commitMessage };
@@ -329,7 +419,7 @@ async function getChangeLog({ topLevelGoal }) {
     { role: "user", content: userPrompt },
   ];
 
-  const response = await chat(messages, "gpt-3.5-turbo");
+  const response = await chatOne(messages, "gpt-3.5-turbo");
 
   const { commitMessage } = JSON.parse(response);
   return { commitMessage };
@@ -361,7 +451,7 @@ async function getBranchName({ topLevelGoal }) {
   return { branch };
 }
 
-async function chat(messages, model = "gpt-4") {
+async function chatOne(messages, model = "gpt-4") {
   console.log(
     `=====================Local to GPT-4>>>>>>>>>>>>>>>>>>>>>\n${JSON.stringify(
       messages,
@@ -383,6 +473,30 @@ async function chat(messages, model = "gpt-4") {
   );
 
   return content;
+}
+
+async function chatMany(messages, model = "gpt-4") {
+  console.log(
+    `=====================Local to GPT-4>>>>>>>>>>>>>>>>>>>>>\n${JSON.stringify(
+      messages,
+      null,
+      2
+    )}\n========================================================`
+  );
+  const response = await openai.createChatCompletion({
+    model,
+    messages,
+    temperature: 1,
+    n: 1,
+  });
+
+  const message = response.data.choices[0].message;
+
+  console.log(
+    `<<<<<<<<<<<<<<<<<<<<<<GPT-4 to Local:=====================\n${content}\n========================================================`
+  );
+
+  return message;
 }
 
 main()
