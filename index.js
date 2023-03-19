@@ -38,14 +38,15 @@ async function main() {
     });
 
     // log response to patch file
-    logIteration(directory, branch, iteration);
+    logIteration(directory, branch, iteration, {
+      patch,
+      patchDescription,
+      nextIteration,
+      complete,
+    });
 
     if (patch) {
       applyPatch(directory, branch, iteration, patch);
-    }
-
-    if (patchDescription) {
-      plannedChanges += patchDescription;
     }
 
     if (complete) {
@@ -132,7 +133,7 @@ function applyPatch(directory, branch, iteration, patch) {
   });
 }
 
-function logIteration(directory, branch, iteration) {
+function logIteration(directory, branch, iteration, response) {
   const iterationLogPath = path.join(
     directory,
     ".gpt-git",
@@ -336,10 +337,7 @@ async function getBranchName({ topLevelGoal }) {
   const userPrompt = `### Top Level Goal\n\n
     ${topLevelGoal}\n\n
 
-    We're going to work on the above goal in a git branch. Recommend a git branch name. Respond only with a valid JSON Object. Escape any characters that need to be escaped. Format the response according to the following template:\n\n
-    {\n
-        "branch": \${Recommend a specific git branch name that corresponds to the Top Level Goal. Use kebab case, use at least 30 characters},\n
-    }\n
+    We need a git branch name that reflects the above goal. Recommend a git branch name using kebab-case, keep it longer than 20 characters.
   `;
 
   const messages = [
@@ -347,10 +345,7 @@ async function getBranchName({ topLevelGoal }) {
     { role: "user", content: userPrompt },
   ];
 
-  const response = await chat(messages, "gpt-3.5-turbo");
-
-  const { branch } = JSON.parse(response);
-  return { branch };
+  return chat(messages, "gpt-3.5-turbo");
 }
 
 async function chat(messages, model = "gpt-4") {
