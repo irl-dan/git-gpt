@@ -98,8 +98,16 @@ function executeCommands(commands) {
     console.log(command);
     console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
 
-    const output = execSync(command, { encoding: "utf-8" });
-    commandOutputs[command] = output;
+    try {
+      const output = execSync(command, { encoding: "utf-8" });
+      commandOutputs[command] = output;
+    } catch (error) {
+      if (error.stderr) {
+        commandOutputs[command] = error.stderr.toString();
+      } else {
+        commandOutputs[command] = error.toString();
+      }
+    }
   }
   return commandOutputs;
 }
@@ -503,7 +511,7 @@ async function chatMany(messages, model = "gpt-4") {
   );
   let response;
   // sleep for 5 seconds to avoid rate limiting
-  await new Promise((resolve) => setTimeout(resolve, 4000));
+  await new Promise((resolve) => setTimeout(resolve, 6000));
   try {
     response = await openai.createChatCompletion({
       model,
