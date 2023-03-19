@@ -231,7 +231,7 @@ async function iterate({ topLevelGoal, gameplan }) {
   `;
   const systemMessage = {
     content: systemMessageContent,
-    type: "system",
+    role: "system",
   };
 
   const gitStatusCommand = "git status --short";
@@ -277,7 +277,7 @@ async function iterate({ topLevelGoal, gameplan }) {
     Respond with a JSON string array of commands to run, like: ["<command 1>", "<command 2>", ...]
 `;
   const contextMessage = {
-    type: "user",
+    role: "user",
     content: contextMessageContent,
     name: "project-manager",
   };
