@@ -345,12 +345,13 @@ async function getBranchName({ topLevelGoal }) {
     { role: "user", content: userPrompt },
   ];
 
-  return chat(messages, "gpt-3.5-turbo");
+  const response = chat(messages, "gpt-3.5-turbo");
+  return `${response}-${Math.floor(Math.random() * 100000)}`;
 }
 
 async function chat(messages, model = "gpt-4") {
   console.log(
-    `=====================Local to GPT-4>>>>>>>>>>>>>>>>>>>>>\n${JSON.stringify(
+    `=====================local to ${model}>>>>>>>>>>>>>>>>>>>>>\n${JSON.stringify(
       messages,
       null,
       2
@@ -366,7 +367,7 @@ async function chat(messages, model = "gpt-4") {
   const content = response.data.choices[0].message.content;
 
   console.log(
-    `<<<<<<<<<<<<<<<<<<<<<<GPT-4 to Local:=====================\n${content}\n========================================================`
+    `<<<<<<<<<<<<<<<<<<<<<<${model} to local:=====================\n${content}\n========================================================`
   );
 
   return content;
