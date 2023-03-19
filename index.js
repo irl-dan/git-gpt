@@ -536,11 +536,8 @@ async function chatMany(messages, model = "gpt-4") {
   } catch (e) {
     if (e.response) {
       console.error(e.response.data);
-      throw new Error(e.response.data);
-    } else {
-      console.error(e);
-      throw new Error(e);
     }
+    throw e;
   }
 
   const message = response.data.choices[0].message;
