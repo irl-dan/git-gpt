@@ -242,7 +242,7 @@ async function iterate({
     It is now your job to make specific improvements and modifications according to the initial request. Consider the changes you are sure you want to make given what you know about the repository.\n\n
 
     {\n
-        "patch": \${a series of code changes in the form of a \`patch\` diff using the unified diff format (generated using git diff or diff -u). If no changes are needed, return an empty string. Though typically the patch is applied to the Working File, the patch may contain changes to more than one file or even create new files or delete existing files.},\n
+        "patch": \${a series of code changes in the form of a \`patch\` diff using the unified diff format (generated using git diff or diff -u). If no changes are needed, return an empty string. Though typically the patch is applied to the Working File, the patch may contain changes to more than one file or even create new files or delete existing files. Be sure to escape characters appropriately since this is embedded in JSON},\n
         "patchDescription": \${a concise, accurate description of the changes in the patch. This is a human readable description of the changes.},\n
         "nextIteration": {\n
             "gameplan": \${the above given Gameplan, modified to reflect only the remaining steps required to achieve the Top Level Goal after applying the above patch.},\n
