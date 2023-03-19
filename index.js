@@ -208,7 +208,7 @@ function logCommit(directory, branch, changeLog) {
 // 4. decide on immediate next gameplan
 
 async function iterate({ topLevelGoal, gameplan }) {
-  const systemPrompt = `As GPT-4, you are an expert in software architecture, development, and analysis.\n
+  const systemMessageContent = `As GPT-4, you are an expert in software architecture, development, and analysis.\n
     You are presented with a Top Level Goal, and you have access to a git repository, which you are permitted to modify through \`patch\` commands. You aim to change the state of the repository to advance the Top Level Goal.\n
     You do nothing beyond recommending patches to the git repository that advance the Top Level Goal, while keeping the repository secure, compliant, safe, robust, modular, and easy-to-read.\n
     You often recommend patches that are not immediately obvious to the human developer, but you are able to see the big picture and make the right decisions.\n
@@ -229,6 +229,10 @@ async function iterate({ topLevelGoal, gameplan }) {
 
     When asked to modify the gameplan for the future iteration, you are sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that have been accomplished, add commands for testing the patch, and add new items to the gameplan that are now possible.\n\n
   `;
+  const systemMessage = {
+    content: systemMessageContent,
+    type: "system",
+  };
 
   const gitStatusCommand = "git status --short";
   const gitStatus = execSync(gitStatusCommand, { encoding: "utf-8" });
@@ -238,7 +242,7 @@ async function iterate({ topLevelGoal, gameplan }) {
 
   const readme = fs.readFileSync("README.md", "utf-8");
 
-  const contextMessage = `### Top Level Goal\n\n
+  const contextMessageContent = `### Top Level Goal\n\n
     ${topLevelGoal}
 
     ### Gameplan\n
@@ -266,15 +270,19 @@ async function iterate({ topLevelGoal, gameplan }) {
 
     It is now your job to make specific improvements and modifications according to the initial request. Consider the changes you are sure you want to make given what you know about the repository.\n\n
 
-    Specify one or more commands to run, like \`ls\` \`grep\`, \`cat\`, \`git\`, \`tail\`, \`head\`, \`find\`, \`npm run test\`, \`npm run lint\` in service of learning about the repository in order to best apply a patch.
+    Specify one or more commands to run, like \`ls\` \`grep\`, \`cat\`, \`git\`, \`tail\`, \`head\`, \`find\`, \`npm run test\`, \`npm run lint\` in service of learning about the repository in order to best apply a patch.\n\n
 
-    Respond with a JSON string array of commands to run, like: ["grep -Hn <search> *", "cat index.js"].\n\n
+    Useful examples include: "grep -Hn <search> *", "cat index.js", "git status --short", "git ls-tree -r --name-only HEAD", "npm run test", "npm run lint".\n\n
+
+    Respond with a JSON string array of commands to run, like: ["<command 1>", "<command 2>", ...]
 `;
+  const contextMessage = {
+    content: contextMessageContent,
+    type: "context",
+    name: "project-manager",
+  };
 
-  let messages = [
-    { role: "system", content: systemPrompt },
-    { role: "user", content: contextMessage, name: "context-provider" },
-  ];
+  let messages = [systemMessage, contextMessage];
 
   const commandsResponse = await chatMany(messages);
 
@@ -369,7 +377,7 @@ async function iterate({ topLevelGoal, gameplan }) {
   const patch = patchResponse?.content;
 
   const nextGameplanContent = `
-    Consider the above patch and make updates to the Gameplan for future iterations. Be sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that are no longer required given the patch, add commands for testing the patch, and add new items to the gameplan that are now possible. A good gameplan is typically outlined in bullet format.\n\n
+    Consider the new state of the system after applying the above patch and make updates to the Gameplan for future iterations. Be sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that are no longer required given the patch, add commands for testing the patch, and add new items to the gameplan that are now possible. A good gameplan is typically outlined in bullet format.\n\n
     If the Top Level Goal has been achieved or is close enough to being achieved that no further steps are necessary, return the precise valid JSON Object: \`{ "topLevelComplete": true }\`, with no words, explanation, or padding accompanying it.\n\n
 
     ### Top Level Goal:\n
@@ -386,7 +394,13 @@ async function iterate({ topLevelGoal, gameplan }) {
     content: nextGameplanContent,
     name: "project-manager",
   };
-  messages = [...messages, patchResponse, nextGameplanMessage];
+  messages = [
+    systemMessage,
+    contextMessage,
+    // commandOutputsMessage, TODO: add this back in when we're no longer rate-limited
+    patchResponse,
+    nextGameplanMessage,
+  ];
 
   const nextGameplanResponse = await chatMany(messages);
   const nextGameplan = nextGameplanResponse?.content;
@@ -511,7 +525,7 @@ async function chatMany(messages, model = "gpt-4") {
   );
   let response;
   // sleep for 5 seconds to avoid rate limiting
-  await new Promise((resolve) => setTimeout(resolve, 6000));
+  await new Promise((resolve) => setTimeout(resolve, 10000));
   try {
     response = await openai.createChatCompletion({
       model,
