@@ -277,8 +277,8 @@ async function iterate({ topLevelGoal, gameplan }) {
     Respond with a JSON string array of commands to run, like: ["<command 1>", "<command 2>", ...]
 `;
   const contextMessage = {
+    type: "user",
     content: contextMessageContent,
-    type: "context",
     name: "project-manager",
   };
 
