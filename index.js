@@ -288,7 +288,7 @@ async function iterate({ topLevelGoal, gameplan }) {
 
   let commands;
   try {
-    commands = JSON.parse(commandsResponse?.content);
+    commands = JSON.parse(commandsResponse?.content?.trim());
   } catch (e) {
     console.warn(`Failed to parse commands: ${commandsResponse?.content}`);
     throw e; // TODO: we can suppress this later and prompt to reformat
@@ -374,7 +374,7 @@ async function iterate({ topLevelGoal, gameplan }) {
   ];
 
   const patchResponse = await chatMany(messages);
-  const patch = patchResponse?.content;
+  const patch = patchResponse?.content?.trim() || "";
 
   const nextGameplanContent = `
     Consider the new state of the system after applying the above patch and make updates to the Gameplan for future iterations. Be sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that are no longer required given the patch, add commands for testing the patch, and add new items to the gameplan that are now possible. A good gameplan is typically outlined in bullet format.\n\n
@@ -403,7 +403,7 @@ async function iterate({ topLevelGoal, gameplan }) {
   ];
 
   const nextGameplanResponse = await chatMany(messages);
-  const nextGameplan = nextGameplanResponse?.content;
+  const nextGameplan = nextGameplanResponse?.content?.trim() || "";
 
   let complete = false;
   try {
