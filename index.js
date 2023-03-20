@@ -360,7 +360,7 @@ if __name__ == '__main__':\n
 In this example, the hunk starts at line 5 in both the original and modified files. The original file has 6 lines in this section, while the modified file has 10 lines. The actual changes are the addition of the lines marked with '+'.\n
 ================== End Patch Format Documentation ==================\n\n
 
-If no changes are needed, return an empty string. Respond only with contents of the patch delimited by a markdown codeblock (ie. "\`\`\`"), without any surrounding context, explanation, or other information. Avoid any patches that would return "corrupt patch at line N"./n
+If no changes are needed, return an empty string. Respond only with contents of the patch delimited on either side by a markdown codeblock (ie. "\`\`\`"), without any surrounding context, explanation, or other information. Avoid any patches that would return "corrupt patch at line N"./n
 The returned message will be written to a file called \`patch.diff\` and applied to the repository using \`git apply\`, so only return a valid patch file.
 `;
 
