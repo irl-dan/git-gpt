@@ -224,13 +224,21 @@ async function iterate({ topLevelGoal, gameplan }) {
     Whenever you are asked to run a command, you will be constrained by stdout/stderr size, so be targeted. Optimize toward making the best patch decision, but use no more stdout/stderr than you require so avoid verbose output formats, and run only commands that are immediately useful.\n\n
     You may use any one of the the following commands, but you are limited to running only the following commands. You may not run a command that modifies any state of the repository: \`ls\` \`grep\`, \`cat\`, \`git\`, \`tail\`, \`head\`, \`find\`, \`npm run test\`, \`npm run lint\`.\n\n
     
-    When asked to recommend a series of changes, use write a valid \`patch\` diff using the unified diff format (ie what is generated using git diff or diff -u).
+    When asked to recommend a series of changes, use a valid \`patch\` diff using the unified diff format (ie what is generated using git diff or diff -u).
     It is okay if your patch may not perfectly advance the Gameplan or reach the Top Level Goal, as you will have a future opportunity to iterate on it again in the future. But it should aim to make as much progress as possible.\n\n
 
     When asked to modify the gameplan for the future iteration, you are sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that have been accomplished, add commands for testing the patch, and add new items to the gameplan that are now possible.\n\n
   `;
+
+  const shortSystemMessageContent = `As GPT-4, you are an expert in software architecture, development, and analysis.\n
+You are presented with a Top Level Goal, and you have access to a git repository, which you are permitted to modify through \`patch\` commands. You aim to change the state of the repository to advance the Top Level Goal.\n
+You do nothing beyond recommending patches to the git repository that advance the Top Level Goal, while keeping the repository secure, compliant, safe, robust, modular, and easy-to-read.\n
+You often recommend patches that are not immediately obvious to the human developer, but you are able to see the big picture and make the right decisions.\n
+You recommend patches that are not only correct, but also the most efficient, the most secure, the most compliant, the most robust, the most modular, and the most easy-to-read.\n\n
+To aid you in advancing the Top Level Goal, you're presented with an immediate Gameplan which you will act on and later modify.\n
+`;
   const systemMessage = {
-    content: systemMessageContent,
+    content: shortSystemMessageContent,
     role: "system",
   };
 
@@ -243,38 +251,38 @@ async function iterate({ topLevelGoal, gameplan }) {
   const readme = fs.readFileSync("README.md", "utf-8");
 
   const contextMessageContent = `### Top Level Goal\n\n
-    ${topLevelGoal}
+${topLevelGoal}
 
-    ### Gameplan\n
-    ${gameplan}\n\n
+### Gameplan\n
+${gameplan}\n\n
 
-    ================== Begin Relevant Context ==================\n\n
-    ### Repository README\n
-    > cat README.md\n
-    \`\`\`\n
-    ${readme}\n
-    \`\`\`\n\n
+================== Begin Relevant Context ==================\n\n
+### Repository README\n
+> cat README.md\n
+\`\`\`\n
+${readme}\n
+\`\`\`\n\n
 
-    ### Git Repository Status\n
-    > ${gitStatusCommand}\n
-    \`\`\`\n
-    ${gitStatus}\n
-    \`\`\`\n\n
+### Git Repository Status\n
+> ${gitStatusCommand}\n
+\`\`\`\n
+${gitStatus}\n
+\`\`\`\n\n
 
-    ### Git Tree\n
-    > ${gitTreeCommand}\n
-    \`\`\`\n
-    ${gitTree}\n
-    \`\`\`\n
-    ================== End Relevant Context ==================\n\n
+### Git Tree\n
+> ${gitTreeCommand}\n
+\`\`\`\n
+${gitTree}\n
+\`\`\`\n
+================== End Relevant Context ==================\n\n
 
-    It is now your job to make specific improvements and modifications according to the initial request. Consider the changes you are sure you want to make given what you know about the repository.\n\n
+It is now your job to make specific improvements and modifications according to the initial request. Consider the changes you are sure you want to make given what you know about the repository.\n\n
 
-    Specify one or more commands to run, like \`ls\` \`grep\`, \`cat\`, \`git\`, \`tail\`, \`head\`, \`find\`, \`npm run test\`, \`npm run lint\` in service of learning about the repository in order to best apply a patch.\n\n
+Specify one or more commands to run, like \`ls\` \`grep\`, \`cat\`, \`git\`, \`tail\`, \`head\`, \`find\`, \`npm run test\`, \`npm run lint\` in service of learning about the repository in order to best apply a patch.\n\n
 
-    Useful examples include: "grep -Hn <search> *", "cat index.js", "git status --short", "git ls-tree -r --name-only HEAD", "npm run test", "npm run lint".\n\n
+Useful examples include: "grep -Hn <search> *", "cat index.js", "git status --short", "git ls-tree -r --name-only HEAD", "npm run test", "npm run lint".\n\n
 
-    Respond with a JSON string array of commands to run, like: ["<command 1>", "<command 2>", ...]
+Respond with a JSON string array of commands to run, like: ["<command 1>", "<command 2>", ...]
 `;
   const contextMessage = {
     role: "user",
@@ -311,50 +319,50 @@ async function iterate({ topLevelGoal, gameplan }) {
   }
 
   const patchRequestContent = `
-    As a helpful, accurate, knowledgable software engineer, you are now ready to make specific improvements and modifications according to the Top Level Goal, the Gameplan, and what you know about the repository. Make as many changes to as many files as you wish. Create new files, delete existing ones, or move files.\n\n
-    Specify the changes you want to make using a \`patch\` diff using the unified diff format (ie to be used by \`git apply <patch>\`).\n\n
+As a helpful, accurate, knowledgable software engineer, you are now ready to make specific improvements and modifications according to the Top Level Goal, the Gameplan, and what you know about the repository. Make as many changes to as many files as you wish. Create new files, delete existing ones, or move files.\n\n
+Specify the changes you want to make using a \`patch\` diff using the unified diff format (ie to be used by \`git apply <patch>\`).\n\n
 
-    The patch file consists of several sections called 'hunks', each representing a set of changes made to a specific part of the file. The format and structure of a patch file is as follows:
+The patch file consists of several sections called 'hunks', each representing a set of changes made to a specific part of the file. The format and structure of a patch file is as follows:
 
-    ================== Begin Patch Format Documentation ==================\n\n
-    ### Header\n\n
-    The header contains two lines, each starting with either "---" or "+++". The "---" line refers to the original file, and the "+++" line refers to the modified file. The file paths or names are provided after the "---" and "+++" symbols.\n
-    Example:\n
-    \`\`\`\n
-    --- app_original.py\n
-    +++ app_modified.py\n
-    \`\`\`\n\n
-    ### Hunk\n\n
-    A hunk represents a set of changes made to a specific part of the file, containing both context lines and the actual changes. A hunk starts with a line that begins with "@@" and has the format:\n
-    \`\`\`\n
-    @@ -start1,count1 +start2,count2 @@
-    \`\`\`\n
-    The start1 and count1 refer to the line number and the number of lines in the original file, while start2 and count2 refer to the line number and the number of lines in the modified file. This line is followed by the actual changes and context lines.\n\n
+================== Begin Patch Format Documentation ==================\n\n
+### Header\n\n
+The header contains two lines, each starting with either "---" or "+++". The "---" line refers to the original file, and the "+++" line refers to the modified file. The file paths or names are provided after the "---" and "+++" symbols.\n
+Example:\n
+\`\`\`\n
+--- app_original.py\n
++++ app_modified.py\n
+\`\`\`\n\n
+### Hunk\n\n
+A hunk represents a set of changes made to a specific part of the file, containing both context lines and the actual changes. A hunk starts with a line that begins with "@@" and has the format:\n
+\`\`\`\n
+@@ -start1,count1 +start2,count2 @@
+\`\`\`\n
+The start1 and count1 refer to the line number and the number of lines in the original file, while start2 and count2 refer to the line number and the number of lines in the modified file. This line is followed by the actual changes and context lines.\n\n
 
-    ### Changes\n\n
-    Each line within a hunk starts with one of the following symbols, indicating its purpose:\n
-    ' ': A space character indicates a context line, meaning the line is unchanged and provides context for the surrounding changes.\n
-    '-': A minus symbol indicates a line that has been removed from the original file.\n
-    '+': A plus symbol indicates a line that has been added to the modified file.\n
-    Example:\n
-    \`\`\`\n
-    @@ -5,6 +5,10 @@\n
-    def home():\n
-        return render_template('index.html')\n\n
+### Changes\n\n
+Each line within a hunk starts with one of the following symbols, indicating its purpose:\n
+' ': A space character indicates a context line, meaning the line is unchanged and provides context for the surrounding changes.\n
+'-': A minus symbol indicates a line that has been removed from the original file.\n
+'+': A plus symbol indicates a line that has been added to the modified file.\n
+Example:\n
+\`\`\`\n
+@@ -5,6 +5,10 @@\n
+def home():\n
+    return render_template('index.html')\n\n
 
-    +@app.route('/about')\n
-    +def about():\n
-    +    return render_template('about.html')\n
-    +\n
-    if __name__ == '__main__':\n
-        app.run(debug=True)\n
-    \`\`\`\n\n
-    In this example, the hunk starts at line 5 in both the original and modified files. The original file has 6 lines in this section, while the modified file has 10 lines. The actual changes are the addition of the lines marked with '+'.\n
-    ================== End Patch Format Documentation ==================\n\n
++@app.route('/about')\n
++def about():\n
++    return render_template('about.html')\n
++\n
+if __name__ == '__main__':\n
+    app.run(debug=True)\n
+\`\`\`\n\n
+In this example, the hunk starts at line 5 in both the original and modified files. The original file has 6 lines in this section, while the modified file has 10 lines. The actual changes are the addition of the lines marked with '+'.\n
+================== End Patch Format Documentation ==================\n\n
 
-    If no changes are needed, return an empty string. Respond only with contents of the patch, without any surrounding context, explanation, delimiters, or other information. Do not surround with code quote strings or with markdown. Avoid any patches that would return "corrupt patch at line N"./n
-    The returned message will be written to a file called \`patch.diff\` and applied to the repository using \`git apply\`, so only return a valid patch file.
-    `;
+If no changes are needed, return an empty string. Respond only with contents of the patch delimited by a markdown codeblock (ie. "\`\`\`"), without any surrounding context, explanation, or other information. Avoid any patches that would return "corrupt patch at line N"./n
+The returned message will be written to a file called \`patch.diff\` and applied to the repository using \`git apply\`, so only return a valid patch file.
+`;
 
   const commandOutputsMessage = {
     role: "user",
@@ -376,18 +384,21 @@ async function iterate({ topLevelGoal, gameplan }) {
   const patchResponse = await chatMany(messages);
   let patch = patchResponse?.content || "";
 
+  // remove any markdown codeblock delimiters
+  patch = patch.replace(/^```$/, "");
+
   const nextGameplanContent = `
-    Consider the new state of the system after applying the above patch and make updates to the Gameplan for future iterations. Be sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that are no longer required given the patch, add commands for testing the patch, and add new items to the gameplan that are now possible. A good gameplan is typically outlined in bullet format.\n\n
-    If the Top Level Goal has been achieved or is close enough to being achieved that no further steps are necessary, return the precise valid JSON Object: \`{ "topLevelComplete": true }\`, with no words, explanation, or padding accompanying it.\n\n
+Consider the new state of the system after applying the above patch and make updates to the Gameplan for future iterations. Be sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that are no longer required given the patch, add commands for testing the patch, and add new items to the gameplan that are now possible. A good gameplan is typically outlined in bullet format.\n\n
+If the Top Level Goal has been achieved or is close enough to being achieved that no further steps are necessary, return the precise valid JSON Object: \`{ "topLevelComplete": true }\`, with no words, explanation, or padding accompanying it.\n\n
 
-    ### Top Level Goal:\n
-    ${topLevelGoal}\n\n
-    
-    ### Current Gameplan:\n
-    ${gameplan}\n\n
+### Top Level Goal:\n
+${topLevelGoal}\n\n
 
-    ### New Gameplan:
-    `;
+### Current Gameplan:\n
+${gameplan}\n\n
+
+### New Gameplan:
+`;
 
   const nextGameplanMessage = {
     role: "user",
@@ -426,19 +437,19 @@ async function getCommitMessage({ topLevelGoal }) {
   const systemPrompt = `You are a helpful, accurate, knowledgable technical writer.`;
 
   const userPrompt = `### Top Level Commit Goal\n\n
-    ${topLevelGoal}\n\n
+${topLevelGoal}\n\n
 
-    ### Commit Diff\n
-    > ${gitDiffCommand}\n
-    \`\`\`\n
-    ${gitDiff}\n
-    \`\`\`\n\n
+### Commit Diff\n
+> ${gitDiffCommand}\n
+\`\`\`\n
+${gitDiff}\n
+\`\`\`\n\n
 
-    Recommend a concise but accurate commit message for the above diff. Respond only with a valid JSON Object. Escape any characters that need to be escaped. Format the response according to the following template:\n\n
-    {\n
-        "commitMessage": \${concise but accurate commit message that summarizes the above diff into a single, easy to parse sentence no more than 72 characters long.},\n
-    }\n
-  `;
+Recommend a concise but accurate commit message for the above diff. Respond only with a valid JSON Object. Escape any characters that need to be escaped. Format the response according to the following template:\n\n
+{\n
+    "commitMessage": \${concise but accurate commit message that summarizes the above diff into a single, easy to parse sentence no more than 72 characters long.},\n
+}\n
+`;
 
   const messages = [
     { role: "system", content: systemPrompt },
@@ -458,19 +469,19 @@ async function getChangeLog({ topLevelGoal }) {
   const systemPrompt = `You are a helpful, accurate, knowledgable technical writer.`;
 
   const userPrompt = `### Top Level Commit Goal\n\n
-    ${topLevelGoal}\n\n
+${topLevelGoal}\n\n
 
-    ### Commit Diff\n
-    > ${gitDiffCommand}\n
-    \`\`\`\n
-    ${gitDiff}\n
-    \`\`\`\n\n
+### Commit Diff\n
+> ${gitDiffCommand}\n
+\`\`\`\n
+${gitDiff}\n
+\`\`\`\n\n
 
-    Recommend a concise but accurate change log that highlights important/breaking/notable changes in a detailed markdown document using the below sections. Use bullets and code snippets if it would help to illustrate. If there is no content for a given section, write 'N/A':\n
-    #### Breaking Changes\n
-    #### New Features\n
-    #### Bug Fixes\n
-  `;
+Recommend a concise but accurate change log that highlights important/breaking/notable changes in a detailed markdown document using the below sections. Use bullets and code snippets if it would help to illustrate. If there is no content for a given section, write 'N/A':\n
+#### Breaking Changes\n
+#### New Features\n
+#### Bug Fixes\n
+`;
 
   const messages = [
     { role: "system", content: systemPrompt },
@@ -487,13 +498,13 @@ async function getBranchName({ topLevelGoal }) {
   const systemPrompt = `You are a helpful, accurate, knowledgable software engineer. You respond only with a valid JSON Object. Escape any characters that need to be escaped.`;
 
   const userPrompt = `### Top Level Goal\n\n
-    ${topLevelGoal}\n\n
+${topLevelGoal}\n\n
 
-    We need a git branch name that reflects the above goal. Recommend a git branch name following the JSON template below. Respond only with the JSON and nothing else:\n\n
-    {\n
-        "branch": \${branchName}\n
-    }\n
-  `;
+We need a git branch name that reflects the above goal. Recommend a git branch name following the JSON template below. Respond only with the JSON and nothing else:\n\n
+{\n
+    "branch": \${branchName}\n
+}\n
+`;
 
   const messages = [
     { role: "system", content: systemPrompt },
