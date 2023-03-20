@@ -349,11 +349,11 @@ async function iterate({ topLevelGoal, gameplan }) {
     if __name__ == '__main__':\n
         app.run(debug=True)\n
     \`\`\`\n\n
-    In this example, the hunk starts at line 5 in both the original and modified files. The original file has 6 lines in this section, while the modified file has 10 lines. The actual changes are the addition of the lines marked with '+'.
-    
+    In this example, the hunk starts at line 5 in both the original and modified files. The original file has 6 lines in this section, while the modified file has 10 lines. The actual changes are the addition of the lines marked with '+'.\n
     ================== End Patch Format Documentation ==================\n\n
 
-    If no changes are needed, return an empty string. Respond only with contents of the patch, without any surrounding context, explanation, delimiters, or other information. Do not surround with code quote strings or with markdown. Avoid any patches that would return "corrupt patch at line N".
+    If no changes are needed, return an empty string. Respond only with contents of the patch, without any surrounding context, explanation, delimiters, or other information. Do not surround with code quote strings or with markdown. Avoid any patches that would return "corrupt patch at line N"./n
+    The returned message will be written to a file called \`patch.diff\` and applied to the repository using \`git apply\`, so only return a valid patch file.
     `;
 
   const commandOutputsMessage = {
