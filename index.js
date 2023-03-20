@@ -374,18 +374,7 @@ async function iterate({ topLevelGoal, gameplan }) {
   ];
 
   const patchResponse = await chatMany(messages);
-  let patch = patchResponse?.content?.trim() || "";
-
-  if (patch.startsWith("```diff\n")) {
-    patch = patch.slice(7); // remove the first 7 characters
-  }
-
-  if (patch.endsWith("```")) {
-    patch = patch.slice(0, -3); // remove the last 3 characters
-  }
-
-  patch = patch.trim();
-  patch = `${patch}\n`;
+  let patch = patchResponse?.content || "";
 
   const nextGameplanContent = `
     Consider the new state of the system after applying the above patch and make updates to the Gameplan for future iterations. Be sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that are no longer required given the patch, add commands for testing the patch, and add new items to the gameplan that are now possible. A good gameplan is typically outlined in bullet format.\n\n
