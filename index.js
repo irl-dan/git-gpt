@@ -385,7 +385,7 @@ The returned message will be written to a file called \`patch.diff\` and applied
   let patch = patchResponse?.content || "";
 
   // remove any markdown codeblock delimiters
-  patch = patch.replace(/^```$/, "");
+  patch = unwrapCodeBlock(patch);
 
   const nextGameplanContent = `
 Consider the new state of the system after applying the above patch and make updates to the Gameplan for future iterations. Be sure to re-consider the Top Level Goal now that the previous patch has been applied. Be sure to remove any items that are no longer required given the patch, add commands for testing the patch, and add new items to the gameplan that are now possible. A good gameplan is typically outlined in bullet format.\n\n
@@ -560,6 +560,17 @@ async function chatMany(messages, model = "gpt-4") {
   );
 
   return message;
+}
+
+function unwrapCodeBlock(markdown) {
+  const codeBlockRegex = /^```(?:\w+)?\n([\s\S]*?)\n```$/;
+  const match = markdown.match(codeBlockRegex);
+
+  if (match && match[1]) {
+    return match[1];
+  }
+
+  return markdown;
 }
 
 main()
