@@ -1,3 +1,4 @@
 node_modules/
 .env
 .gpt-git
+.git-gpt

@@ -26,7 +26,7 @@ async function main() {
   console.log(`Checking out a new branch ${branch}`);
   execSync(`git checkout -b ${branch}`, { encoding: "utf-8" });
 
-  const iteration = 0;
+  let iteration = 0;
   while (iteration < MAX_ITERATIONS) {
     console.log(`Starting iteration ${iteration}`);
     let { patch, nextGameplan, commandOutputs, complete } = await iterate({
@@ -115,7 +115,7 @@ function executeCommands(commands) {
 function applyPatch(directory, branch, iteration, patch) {
   const patchPath = path.join(
     directory,
-    ".gpt-git",
+    ".git-gpt",
     branch,
     `${iteration}`,
     "patch"
@@ -124,7 +124,7 @@ function applyPatch(directory, branch, iteration, patch) {
   fs.writeFileSync(patchPath, patch, "utf-8");
 
   try {
-    execSync(`git apply --reject --whitespace=fix ${patchPath}`, {
+    execSync(`patch -p0 ${patchPath}`, {
       encoding: "utf-8",
     });
   } catch (error) {
@@ -141,7 +141,7 @@ function logIteration(
   if (patch) {
     const patchFilePath = path.join(
       directory,
-      ".gpt-git",
+      ".git-gpt",
       branch,
       `${iteration}`,
       "patch"
@@ -153,7 +153,7 @@ function logIteration(
   if (nextGameplan) {
     const nextGameplanPath = path.join(
       directory,
-      ".gpt-git",
+      ".git-gpt",
       branch,
       `${iteration}`,
       "nextGameplan.md"
@@ -165,7 +165,7 @@ function logIteration(
   if (commandOutputs) {
     const commandOutputsPath = path.join(
       directory,
-      ".gpt-git",
+      ".git-gpt",
       branch,
       `${iteration}`,
       "out.log"
@@ -177,7 +177,7 @@ function logIteration(
   if (complete) {
     const completePath = path.join(
       directory,
-      ".gpt-git",
+      ".git-gpt",
       branch,
       `${iteration}`,
       "out.log"
@@ -190,7 +190,7 @@ function logIteration(
 function logCommit(directory, branch, changeLog) {
   const changeLogPath = path.join(
     directory,
-    ".gpt-git",
+    ".git-gpt",
     branch,
     "CHANGE_LOG.md"
   );
@@ -320,7 +320,7 @@ Respond with a JSON string array of commands to run, like: ["<command 1>", "<com
 
   const patchRequestContent = `
 As a helpful, accurate, knowledgable software engineer, you are now ready to make specific improvements and modifications according to the Top Level Goal, the Gameplan, and what you know about the repository. Make as many changes to as many files as you wish. Create new files, delete existing ones, or move files.\n\n
-Specify the changes you want to make using a \`patch\` diff using the unified diff format (ie to be used by \`git apply <patch>\`).\n\n
+Specify the changes you want to make using a \`patch\` diff using the unified diff format (ie to be used by \`patch -p0 <patch>\`).\n\n
 
 The patch file consists of several sections called 'hunks', each representing a set of changes made to a specific part of the file. The format and structure of a patch file is as follows:
 
